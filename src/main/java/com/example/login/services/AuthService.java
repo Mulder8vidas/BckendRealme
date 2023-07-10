@@ -2,29 +2,54 @@ package com.example.login.services;
 
 import com.example.login.entity.AuthEntity;
 import com.example.login.entity.AuthRepository;
-import com.example.login.entity.Producto;
-import com.example.login.models.LoginDO;
+import com.example.login.entity.enm.Rol;
+import com.example.login.models.JwtResponse;
 import com.example.login.models.RegisterDO;
 import com.example.login.models.Response;
+import com.example.login.models.ResponseDO;
+import com.example.login.services.security.JwtUtil;
+import com.example.login.services.security.User;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Service
 public class AuthService {
 
 
     private final AuthRepository authRepository;
+    private final JwtUtil jwtUtil;
+
+    @Autowired
+    private AuthenticationManager authenticationManager;
 
 
     @Autowired
-    public AuthService(AuthRepository authRepository) {
+    public AuthService(AuthRepository authRepository, JwtUtil jwtUtil) {
         this.authRepository = authRepository;
+        this.jwtUtil = jwtUtil;
     }
 
-    public Response login(String username,String password){
+    public ResponseDO<?> login(String username,String password){
 
 
-        return this.authRepository.findAll().stream().filter(a-> a.getUsername().equalsIgnoreCase(username) && a.getPassword().equalsIgnoreCase(password)).toList().size()>0 ? new Response("Usuario Logeado"): new Response("Usuario o clave incorrectas");
+     try {
+         Authentication authentication = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
+         SecurityContextHolder.getContext().setAuthentication(authentication);
+         User userDetails = (User) authentication.getPrincipal();
+         String token = this.jwtUtil.generateToken(userDetails.getUsername(), userDetails.getAuthorities().stream().findFirst().get().getAuthority(),userDetails.getNombrecompleto());
+         return new ResponseDO<>(true, "Usuario logeado con exito", new JwtResponse(token, "Bearer", UUID.randomUUID().toString()));
+     }catch (Exception ex){
+         return new ResponseDO<>(false, ex.getMessage(), null);
+     }
+
+
+
     }
 
     public Response registrar(RegisterDO data){
@@ -34,6 +59,7 @@ public class AuthService {
             authEntity.setPassword(data.getPassword());
             authEntity.setNombre(data.getNombre());
             authEntity.setApellido(data.getApellido());
+            authEntity.setRol(Rol.USER);
             AuthEntity save = this.authRepository.save(authEntity);
             return new Response("Usuario creado correctamente");
         }catch (Exception ex){

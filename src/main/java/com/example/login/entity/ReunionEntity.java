@@ -1,10 +1,13 @@
 package com.example.login.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.util.Date;
+import java.util.List;
+import java.util.Set;
 
 @Entity(name = "reunion")
 @Getter
@@ -21,6 +24,12 @@ public class ReunionEntity {
 
     @Temporal(TemporalType.TIMESTAMP)
     private Date fechaReunion;
+
+    @JsonIgnore
+    @OneToMany(targetEntity = ReunionUsuarioEntity.class,mappedBy = "idReunion")
+    Set<ReunionUsuarioEntity> usuariosReunion;
+
+    private String tarea;
 
 
 
